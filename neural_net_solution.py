@@ -50,6 +50,9 @@ class NeuralNetwork:
         for i in range(1, num_layers + 1):
             self.params["W" + str(i)] = np.random.randn(sizes[i - 1], sizes[i]) / np.sqrt(sizes[i - 1])
             self.params["b" + str(i)] = np.zeros(sizes[i])
+        
+        print('shape of weights', [ v.shape for k, v in self.params.items() if 'W' in k])
+        print('shape of all inputs', self.input_size, self.hidden_sizes, self.output_size, self.num_layers)
 
             # TODO: You may set parameters for Adam optimizer here
             # I will leave it blank, as the update function will handle this already
@@ -76,11 +79,11 @@ class NeuralNetwork:
         # We basically use the chain rule to calculate the gradient of the loss with respect to the weights, bias, and input
             # So basically for each variable, we need to multiply the other values not included, because we're calculating the gradient
         # For the weight gradient, we always do dotproduct of x and y. Here the y is z, or the derivative is de_dz
-        dw = np.dot(X.t, de_dz)
+        dw = np.dot(X.T, de_dz)
         # For the bias gradient, we always calculate the sum of the y
         db = np.sum(de_dz, axis = 0)
         # We can calculate the gradient of the loss with respect to the input (z), 
-        dx = np.dot(de_dz, W.t)
+        dx = np.dot(de_dz, W.T)
 
         return dw, db, dx
 
@@ -140,19 +143,39 @@ class NeuralNetwork:
         # the same keys as self.params. You can use functions like
         # self.linear, self.relu, and self.mse in here.
 
+        print(self.hidden_sizes)
+        print(self.num_layers)
+
         for i in range(1, self.num_layers):
             W = self.params["W" + str(i)]
             b = self.params["b" + str(i)]
 
-            self.outputs["linear_outputs_" + str(i)] = self.linear(W, X, b)
-            self.outputs["relu_outputs_" + str(i)] = self.relu(self.outputs["linear_outputs_" + str(i)])
+            print(W.shape, b.shape)
+            print(self.params.keys())
+
+            linear_output = self.linear(W, X, b)
+            relu_output = self.relu(linear_output)
+
+            self.outputs["linear_outputs_" + str(i)] = linear_output
+            self.outputs["relu_outputs_" + str(i)] = relu_output
+
+            # W = self.params["W" + str(i)]
+            # b = self.params["b" + str(i)]
+
+            # self.outputs["linear_outputs_" + str(i)] = self.linear(W, X, b)
+            # self.outputs["relu_outputs_" + str(i)] = self.relu(self.outputs["linear_outputs_" + str(i)])
+            print('one layer done')
             # self.outputs["linear_outputs_2_" + str(i)] = self.linear(W, self.outputs["relu_outputs_" + str(i)], b)
             # self.outputs["sigmoid_outputs_" + str(i)] = self.sigmoid(self.outputs["linear_outputs_2_" + str(i)])
 
-        # Pass everyhting through last linear layer, using the final weights and biases (which is why we add num_layers to the key, as it is the final layer) 
-        self.outputs["linear_outputs_outputs"] = self.linear(self.params["W" + str(self.num_layers)], self.outputs["relu_outputs_" + str(self.num_layers)], self.params["b" + str(self.num_layers)])
+        # Pass everyhting through last linear layer, using the final weights and biases (which is why we add num_layers to the key, as it is the final layer)
+        # print(self.outputs.keys())
+        # print(self.num_layers)
+        # print(self.params.keys())
+        print(self.outputs.keys())
+        self.outputs["linear_outputs_outputs"] = self.linear(self.params["W" + str(self.num_layers)], self.outputs["relu_outputs_" + str(self.num_layers - 1)], self.params["b" + str(self.num_layers)])
         self.outputs["output_layer"] = self.sigmoid(self.outputs["linear_outputs_outputs"])
-
+        
         return self.outputs["output_layer"]
 
     def backward(self, y: np.ndarray) -> float:
@@ -178,11 +201,13 @@ class NeuralNetwork:
         dz = self.mse_sigmoid_grad(y, self.outputs["output_layer"])
 
         # Backpropagation through the layers
-        for i in range(self.num_layers, 0, -1):
+        for i in range(self.num_layers - 1, 0, -1):
             # Calculate the gradients for the current layer
+            print(self.params["W" + str(i)].shape)
+            print(dz.shape)
             dw, db, dx = self.linear_grad(
                 self.params["W" + str(i)],
-                self.outputs["relu_outputs_" + str(i)],
+                self.outputs["linear_outputs_" + str(i)],
                 self.params["b" + str(i)],
                 dz,
                 reg=0,
